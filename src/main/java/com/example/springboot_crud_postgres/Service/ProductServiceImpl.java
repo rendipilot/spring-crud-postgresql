@@ -1,17 +1,20 @@
 package com.example.springboot_crud_postgres.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 
 import com.example.springboot_crud_postgres.Repository.ProductRepository;
 import com.example.springboot_crud_postgres.model.Product;
+
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 @Slf4j
 @Service
-public class ProductServiceImpl implements ProductService{
+public class ProductServiceImpl implements ProductService {
 
     private final ProductRepository productRepository;
 
@@ -20,10 +23,16 @@ public class ProductServiceImpl implements ProductService{
         this.productRepository = productRepository;
     }
 
+    @CircuitBreaker(name = "productService", fallbackMethod = "fallbackGetAllProducts")
     @Override
     public List<Product> getAllProducts() {
-        log.info("Fetching all products");
-        return productRepository.findAll();
+        return productRepository.findAll(); // Mengakses database
+    }
+
+    // Fallback method jika circuit breaker diaktifkan
+    public List<Product> fallbackGetAllProducts(Throwable t) {
+        log.error("Database tidak dapat diakses, menggunakan fallback method.", t);
+        return new ArrayList<>(); // Mengembalikan daftar kosong atau data cadangan lainnya
     }
 
     @Override
@@ -58,5 +67,5 @@ public class ProductServiceImpl implements ProductService{
         Product product = getProductById(id);
         productRepository.delete(product);
     }
-    
+
 }

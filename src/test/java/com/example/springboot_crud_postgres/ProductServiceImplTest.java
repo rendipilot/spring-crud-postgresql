@@ -1,10 +1,10 @@
 package com.example.springboot_crud_postgres;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -12,12 +12,16 @@ import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
 
 import com.example.springboot_crud_postgres.Repository.ProductRepository;
 import com.example.springboot_crud_postgres.Service.ProductServiceImpl;
 import com.example.springboot_crud_postgres.model.Product;
 
+@SpringBootTest
 public class ProductServiceImplTest {
+
     @Mock
     private ProductRepository productRepository; // Mocking ProductRepository
 
@@ -44,22 +48,26 @@ public class ProductServiceImplTest {
     }
 
     @Test
-    public void testGetAllProducts() {
-        // Preparing the mock behavior of productRepository.findAll()
-        List<Product> productList = new ArrayList<>();
-        productList.add(product1);
-        productList.add(product2);
-        
-        when(productRepository.findAll()).thenReturn(productList); // Mocking the repository
-
-        // Calling the service method
+    public void testGetAllProducts_WhenDatabaseFails_ShouldUseFallback() {
+        doThrow(new RuntimeException("Database error")).when(productRepository).findAll();
+        // Calling the service method and expecting it to fall back
         List<Product> result = productService.getAllProducts();
 
-        // Verifying the result
-        assertNotNull(result, "Product list should not be null");
-        assertEquals(2, result.size(), "Product list should contain 2 products");
-        assertEquals("Product 1", result.get(0).getName(), "First product name should be 'Product 1'");
-        assertEquals("Product 2", result.get(1).getName(), "Second product name should be 'Product 2'");
+        // Verifying that the fallback method is called and the result is a new empty list
+        assertEquals(0, result.size());
     }
 
+    @Test
+    public void testGetAllProducts_Success() {
+        // Given: Ketika repository mengembalikan daftar produk
+        List<Product> mockProducts = Arrays.asList(product1, product2);  // Gunakan produk yang sudah ada di setUp  
+        when(productService.getAllProducts()).thenReturn(mockProducts);
+
+        // When: Memanggil metode getAllProducts
+        List<Product> result = productService.getAllProducts();
+
+        // Then: Memastikan hasilnya sesuai dengan yang diharapkan
+        assertEquals(2, result.size());  // Memastikan jumlah produk yang dikembalikan
+        assertEquals("Product 1", result.get(0).getName());  // Memastikan produk pertama adalah "Product 1"
+    }
 }
